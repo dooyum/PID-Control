@@ -48,7 +48,6 @@ int main()
   pid.twiddle_param = 0;
   pid.is_twiddle_coeff_down = false;
   pid.best_error = __DBL_MAX__;
-  //  pid.Init(3.11, 0.0, 82.15);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
