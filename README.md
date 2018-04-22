@@ -11,7 +11,7 @@ The algorithm began with P, I and D parameters all set to 0.5 and the parameter 
 
 On a scale where "D" would be a 1.0, the "P,I,D" values would end up as "0.1, 0.001, 1.0". I tried out these values and got a pretty good trail run that handle most of the road well except for the bends.
 
-[Twiddle inpired Run](../master/videos/twiddle_pid_p.mov)
+[Twiddle inpired Run](../master/videos/twiddle_pid.mov)
 
 ## Effect of each PID Coefficient
 To refine the coefficient parameters that were derived from Twiddle to a working solution, I tweaked each value of the PID params independently.
