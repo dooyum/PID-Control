@@ -39,7 +39,7 @@ int main()
 
   PID pid;
 
-  pid.Init(0.18, 0.001, 1.0);
+  pid.Init(0.12, 0.001, 1.0);
   pid.enable_twiddle = false;
   pid.diff_params = {1.0, 0.0, 10.0};
   // Number of iterations after which Twiddle should be run.
