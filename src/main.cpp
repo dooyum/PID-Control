@@ -11,6 +11,11 @@ using json = nlohmann::json;
 constexpr double pi() { return M_PI; }
 double deg2rad(double x) { return x * pi() / 180; }
 double rad2deg(double x) { return x * 180 / pi(); }
+/* Constants */
+double const max_steering_angle = 1;
+double const min_steering_angle = -1;
+double const max_throttle = 1.0;
+double const max_speed = 100;
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -33,7 +38,17 @@ int main()
   uWS::Hub h;
 
   PID pid;
-  // TODO: Initialize the pid variable.
+
+  pid.Init(0.18, 0.001, 1.0);
+  pid.enable_twiddle = false;
+  pid.diff_params = {1.0, 0.0, 10.0};
+  // Number of iterations after which Twiddle should be run.
+  pid.twiddle_iteration_max = 200;
+  // Begin Twiddle optimization with "P" coefficient.
+  pid.twiddle_param = 0;
+  pid.is_twiddle_coeff_down = false;
+  pid.best_error = __DBL_MAX__;
+  //  pid.Init(3.11, 0.0, 82.15);
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -50,20 +65,74 @@ int main()
           double cte = std::stod(j[1]["cte"].get<std::string>());
           double speed = std::stod(j[1]["speed"].get<std::string>());
           double angle = std::stod(j[1]["steering_angle"].get<std::string>());
-          double steer_value;
-          /*
-          * TODO: Calcuate steering value here, remember the steering value is
-          * [-1, 1].
-          * NOTE: Feel free to play around with the throttle and speed. Maybe use
-          * another PID controller to control the speed!
-          */
-          
+
+          pid.iterations++;
+
+          // Check for error and tune parameters using Twiddle algorithm.
+          double diff_params_sum = pid.diff_params[0] + pid.diff_params[1] + pid.diff_params[2];
+          if (pid.enable_twiddle && pid.iterations > pid.twiddle_iteration_max && diff_params_sum > 0.02) {
+
+            // Twiddle
+            if(!pid.is_twiddle_coeff_down) {
+              pid.params[pid.twiddle_param] += pid.diff_params[pid.twiddle_param];
+              pid.UpdateError(cte);
+            }
+
+            // Set the best error to the first error.
+            if (pid.best_error == __DBL_MAX__) {
+              pid.best_error = pid.error;
+            }
+
+            if (pid.error < pid.best_error) {
+              pid.best_error = pid.error;
+              pid.diff_params[pid.twiddle_param] *= 1.1;
+              pid.is_twiddle_coeff_down = false;
+              pid.twiddle_param = (pid.twiddle_param + 1) % pid.params.size();
+            } else {
+              if(pid.is_twiddle_coeff_down) {
+                pid.is_twiddle_coeff_down = false;
+                pid.params[pid.twiddle_param] += pid.diff_params[pid.twiddle_param];
+                pid.diff_params[pid.twiddle_param] *= 0.9;
+                pid.twiddle_param = (pid.twiddle_param + 1) % pid.params.size();
+              } else {
+                pid.is_twiddle_coeff_down = true;
+                pid.params[pid.twiddle_param] -= 2 * pid.diff_params[pid.twiddle_param];
+                pid.UpdateError(cte);
+              }
+            }
+            // Restart simulator with tuned parameters.
+            pid.Init(pid.params[0], pid.params[1], pid.params[2]);
+            std::string reset_msg = "42[\"reset\",{}]";
+            std::cout << "Restart!" << std::endl;
+            ws.send(reset_msg.data(), reset_msg.length(), uWS::OpCode::TEXT);
+          } else {
+            pid.UpdateError(cte);
+          }
+
+          double steer_value = -pid.params[0] * pid.p_error - pid.params[2] * pid.d_error - pid.params[1] * pid.i_error;
+
+          if (steer_value > max_steering_angle)
+            steer_value = max_steering_angle;
+          if (steer_value < min_steering_angle)
+            steer_value = min_steering_angle;
+
           // DEBUG
-          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
+          std::cout << "CTE: " << cte << " Steering Value: " << steer_value << " Speed: " << speed << std::endl;
+
+          double speed_to_desired_ratio = max_throttle - (speed / max_speed) * max_throttle;
+          // Increase throttle on straight roads and decrease around bends.
+          double throttle = speed_to_desired_ratio;
+          if (fabs(steer_value) < max_steering_angle/10) {
+            throttle *= 0.8;
+          } else if(fabs(steer_value) < max_steering_angle/5) {
+            throttle *= 0.4;
+          } else if(fabs(steer_value) < max_steering_angle) {
+            throttle *= 0.2;
+          }
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = throttle;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
