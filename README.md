@@ -6,7 +6,7 @@ Self-Driving Car Engineer Nanodegree Program PID Project Writeup
 ## PID Parameter Selection using Twiddle
 I used the Twiddle algorithm to get a ballpark of parameter figures that would minimize the Cross Treck Error of the vehicle from the middle of the lane.
 
-The algorithm began with P, I and D parameters all set to 0.5 and the parameter diffs, set to 1.0. After many iterations, they all converged to values of differing orders of magnitude when compared to each other.
+The algorithm began with P, I and D parameters all set to 0.0 and the parameter diffs, set to [0.05, 0.0005, 0.05]. THese diff values were chosen because we want to minimize the effect of the cummilative error, but highlight the present CTE and diff in CTE. After many iterations, they all converged to values of differing orders of magnitude when compared to each other.
 "D" was consistently the largest of the three parameters, with "P" converging to about a tenth the magnitude of "D". The "I" parameter almost vanished when compared to the "D" parameter. It was about a hundreth of the "P" parameter.
 
 On a scale where "D" would be a 1.0, the "P,I,D" values would end up as "0.1, 0.001, 1.0". I tried out these values and got a pretty good trail run that handle most of the road well except for the bends.
