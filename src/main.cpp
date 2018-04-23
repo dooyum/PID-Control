@@ -41,13 +41,12 @@ int main()
 
   pid.Init(0.12, 0.001, 1.0);
   pid.enable_twiddle = false;
-  pid.diff_params = {1.0, 0.0, 10.0};
+  pid.diff_params = {0.05, 0.0005, 0.05};
   // Number of iterations after which Twiddle should be run.
   pid.twiddle_iteration_max = 200;
   // Begin Twiddle optimization with "P" coefficient.
   pid.twiddle_param = 0;
   pid.is_twiddle_coeff_down = false;
-  pid.best_error = __DBL_MAX__;
 
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -75,11 +74,6 @@ int main()
             if(!pid.is_twiddle_coeff_down) {
               pid.params[pid.twiddle_param] += pid.diff_params[pid.twiddle_param];
               pid.UpdateError(cte);
-            }
-
-            // Set the best error to the first error.
-            if (pid.best_error == __DBL_MAX__) {
-              pid.best_error = pid.error;
             }
 
             if (pid.error < pid.best_error) {
